@@ -25,10 +25,10 @@ const TYPE_LABELS = {
 
 /** Plain-language help for the errors beginners hit most, keyed by SQLSTATE. */
 const ERROR_HELP = {
-  23502: ['NOT NULL', 'This column must have a value.'],
-  23503: ['Foreign key', 'The row points at something that does not exist, or something still points at the row you are deleting.'],
-  23505: ['Unique / primary key', 'A row with this key already exists, and keys cannot repeat.'],
-  23514: ['Check constraint', 'The value breaks a rule written into the table.'],
+  '23502': ['NOT NULL', 'This column must have a value.'],
+  '23503': ['Foreign key', 'The row points at something that does not exist, or something still points at the row you are deleting.'],
+  '23505': ['Unique / primary key', 'A row with this key already exists, and keys cannot repeat.'],
+  '23514': ['Check constraint', 'The value breaks a rule written into the table.'],
   '42601': ['Syntax error', 'Postgres could not read the query. Look near the word it quotes: a missing comma, quote, or keyword?'],
   '42P01': ['Unknown table', 'Check the spelling against the Tables list on the left.'],
   '42703': ['Unknown column', 'Check the spelling against the Tables list. With a JOIN, write table.column.'],
