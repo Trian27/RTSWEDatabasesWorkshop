@@ -4,9 +4,11 @@
   "description": "Road2SWE databases workshop: club-events database, in-browser Postgres page, and tests.",
   "type": "module",
   "scripts": {
-    "test": "node --test \"tests/*.test.mjs\""
+    "test": "node --test \"tests/*.test.mjs\"",
+    "slides": "node slides/build_slides.cjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.16"
+    "@electric-sql/pglite": "0.5.16",
+    "pptxgenjs": "4.0.1"
   }
 }

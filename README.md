@@ -36,7 +36,8 @@ Running `schema.sql` again drops and recreates every table. To demo `break_it.sq
 
 - Data: edit the constants at the top of `scripts/generate_seed.py`, then run `python3 scripts/generate_seed.py` (standard library only). The same seed always produces the same file, and the script refuses to write if a fact the exercises rely on no longer holds.
 - Exercises: edit `sql/exercises.sql`. Each exercise starts with `-- @exercise <n>` and needs `-- @level` and `-- @prompt`; `-- @hint`, `-- @live` (instructor demo), `-- @check shape` (compare row and column counts only), and `-- @sorted <column> asc|desc` are optional. The SQL below those lines is the reference answer.
-- If you change the data, update the answer key in INSTRUCTOR.md and the numbers on the slides.
+- Slides: `npm install && npm run slides` rebuilds `slides/databases-workshop.pptx` from the current SQL files and data, so its numbers and SQL always match. Add `-- --page-url https://…` to print the hosted page link on the last slide.
+- If you change the data, update the answer key in INSTRUCTOR.md and rebuild the slides.
 
 ## Run the tests
 
