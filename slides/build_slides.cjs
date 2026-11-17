@@ -812,8 +812,12 @@ function slideWrap(pres, section, facts, pageUrl) {
   });
   const boxY = CONTENT_TOP + 3.75;
   slide.addShape('roundRect', { x: MARGIN, y: boxY, w: CONTENT_W, h: 1.4, fill: { color: '2A3550' }, line: { color: '2A3550' }, rectRadius: 0.08 });
-  text(slide, 'Keep practicing', { x: MARGIN + 0.35, y: boxY + 0.2, w: 4, h: 0.4, fontSize: SIZE.heading, bold: true, color: HEX.accent3 });
-  text(slide, `${pageUrl ? `Workshop page: ${pageUrl}` : 'The workshop page link is in the group chat.'} It runs Postgres in your browser with all ${fmt(facts.counts.rsvps)} RSVPs. Exercises 12\u00A0to\u00A014 are stretch goals; Reset rebuilds the data anytime.`, {
+  const heading = pageUrl
+    ? [{ text: 'Keep practicing: ', options: { color: HEX.accent3 } }, { text: pageUrl, options: { color: HEX.lt1 } }]
+    : 'Keep practicing';
+  text(slide, heading, { x: MARGIN + 0.35, y: boxY + 0.2, w: CONTENT_W - 0.7, h: 0.4, fontSize: SIZE.heading, bold: true, color: HEX.accent3 });
+  const practice = `It runs Postgres in your browser with all ${fmt(facts.counts.rsvps)} RSVPs. Exercises 12\u00A0to\u00A014 are stretch goals; Reset rebuilds the data anytime.`;
+  text(slide, pageUrl ? `The workshop page above stays up. ${practice}` : `The workshop page link is in the group chat. ${practice}`, {
     x: MARGIN + 0.35, y: boxY + 0.65, w: CONTENT_W - 0.7, h: 0.65, fontSize: SIZE.body, color: HEX.lt1,
   });
   slide.addNotes('Recap the three points. Remind them the page stays up and the SQL files load into any Postgres install.');

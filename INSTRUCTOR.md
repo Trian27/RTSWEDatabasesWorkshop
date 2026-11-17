@@ -92,8 +92,8 @@ The page remembers your solved exercises in your browser, separately for each ad
 
 ## Before the workshop
 
-- Host the page (README, "Open the workshop page"). Open the hosted link on a laptop that isn't on your network, and check that it reaches "Ready".
-- Have the link ready to paste in the group chat. If you rebuilt the slides with `--page-url`, it's also on slide 16.
+- Host the page: push `main` and turn on GitHub Pages (README, "Open the workshop page"). The link is https://trian27.github.io/RTSWE/databases-workshop/, and slide 16 already shows it. Open it on a laptop that isn't on your network and check that it reaches "Ready".
+- Have the link ready to paste in the group chat.
 - Make the page's text large enough for the back row (browser zoom, Ctrl/Cmd +).
 - Optional: if you'd rather project psql than the page, load the data first with `createdb club_events && psql -d club_events -f sql/schema.sql -f sql/seed.sql`. For the break-it demo in psql, run `\set ON_ERROR_STOP off` first.
 

@@ -19,7 +19,7 @@ A 1-hour Road2SWE workshop on database design and SQL, built around a club-event
 
 The page must be served over HTTP; opening `index.html` as a file does not work, because the browser blocks it from reading the SQL files. Each visitor downloads PostgreSQL (PGlite, about 4 MB compressed) from cdn.jsdelivr.net, so the network must allow that host.
 
-- **For mentees:** host the folder with GitHub Pages. In the repository's Settings → Pages, choose "Deploy from a branch", pick the branch and the `/ (root)` folder, and the page is served at `https://<user>.github.io/<repo>/databases-workshop/`. On a free GitHub plan, Pages requires a public repository.
+- **For mentees:** host the folder with GitHub Pages. Push `main`, then in the repository's Settings → Pages choose "Deploy from a branch", `main`, and the `/ (root)` folder. The page is then served at https://trian27.github.io/RTSWE/databases-workshop/ (in general, `https://<user>.github.io/<repo>/databases-workshop/`). The empty `.nojekyll` file at the repository root tells Pages to serve the files as they are, without running them through Jekyll. On a free GitHub plan, Pages requires a public repository.
 - **On your machine:** `cd databases-workshop && python3 -m http.server 8000`, then open http://localhost:8000.
 
 ## Load the data into your own PostgreSQL
