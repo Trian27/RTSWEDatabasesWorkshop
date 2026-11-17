@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Club Events SQL</title>
+<meta name="description" content="Road2SWE databases workshop: run real PostgreSQL in your browser against a club-events database.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@600&display=swap">
+<style>
+/* Workbench: tables rail | editor + results | exercises. Two columns under 1180px, one column under 760px. */
+:root {
+  --bg: #f8f6f6;
+  --surface: #ffffff;
+  --surface-2: #f1eded;
+  --border: #e0d8d9;
+  --fg: #1f1a1b;
+  --muted: #675e60;
+  --accent: #cc0033;
+  --accent-strong: #a3002a;
+  --on-accent: #ffffff;
+  --ok: #1d7a4b;
+  --ok-bg: #e6f4ec;
+  --notice: #8a4b0f;
+  --notice-bg: #fdf1e3;
+  --notice-border: #f0cfa6;
+  --code-bg: #f4f1f1;
+  --focus: #2f6fdb;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-display: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --step--1: 0.8125rem;
+  --step-0: 0.9375rem;
+  --step-1: 1.125rem;
+  --step-2: 1.375rem;
+  --radius: 6px;
+  --gutter-left: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-right: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151213; --surface: #1d191a; --surface-2: #272223; --border: #3a3234; --fg: #f2eded; --muted: #aaa0a2;
+    --accent: #ff4f6e; --accent-strong: #ff7a91; --on-accent: #1a0007; --ok: #6fd19c; --ok-bg: #16291f;
+    --notice: #f4b26b; --notice-bg: #2c2016; --notice-border: #5a3d20; --code-bg: #231e1f; --focus: #7aa7ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151213; --surface: #1d191a; --surface-2: #272223; --border: #3a3234; --fg: #f2eded; --muted: #aaa0a2;
+  --accent: #ff4f6e; --accent-strong: #ff7a91; --on-accent: #1a0007; --ok: #6fd19c; --ok-bg: #16291f;
+  --notice: #f4b26b; --notice-bg: #2c2016; --notice-border: #5a3d20; --code-bg: #231e1f; --focus: #7aa7ff;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 var(--step-0)/1.5 var(--font-body);
+  display: flex; flex-direction: column;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; }
+code, pre, textarea, .mono { font-family: var(--font-mono); }
+button { font: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.topbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+  padding-block: 12px; padding-left: var(--gutter-left); padding-right: var(--gutter-right);
+  border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.brand h1 { font-size: var(--step-2); letter-spacing: -0.01em; }
+.brand h1 span { color: var(--accent); }
+.brand p { margin: 0; color: var(--muted); font-size: var(--step--1); }
+.topbar .spacer { flex: 1; }
+.status {
+  display: inline-flex; align-items: center; gap: 8px; font-size: var(--step--1);
+  padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted);
+}
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.status[data-state="loading"]::before { animation: pulse 1.2s ease-in-out infinite; }
+.status[data-state="ready"] { color: var(--ok); background: var(--ok-bg); border-color: transparent; }
+.status[data-state="ready"]::before { background: var(--ok); }
+.status[data-state="error"] { color: var(--notice); background: var(--notice-bg); border-color: var(--notice-border); }
+.status[data-state="error"]::before { background: var(--notice); }
+@keyframes pulse { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .status[data-state="loading"]::before { animation: none; } }
+
+.btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--fg);
+  border-radius: var(--radius); padding: 6px 12px; font-size: var(--step--1); font-weight: 500;
+}
+.btn:hover { background: var(--surface-2); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.btn-link { border: 0; background: none; padding: 0; color: var(--accent); font-size: var(--step--1); font-weight: 500; }
+.btn-link:hover { text-decoration: underline; background: none; }
+
+.workbench {
+  flex: 1; min-height: 0;
+  display: grid; gap: 16px;
+  grid-template-columns: 15rem minmax(0, 1fr) 25rem;
+  grid-template-areas: "tables main exercises";
+  padding-block: 16px; padding-left: var(--gutter-left); padding-right: var(--gutter-right);
+}
+.panel { min-width: 0; min-height: 0; overflow: auto; }
+#tables-panel { grid-area: tables; }
+#main-panel { grid-area: main; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+#side-panel { grid-area: exercises; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+@media (max-width: 1180px) {
+  .workbench { grid-template-columns: minmax(0, 1fr) 23rem; grid-template-areas: "main exercises" "tables exercises"; grid-template-rows: minmax(0, 1fr) auto; }
+  #tables-panel { max-height: 16rem; }
+}
+@media (max-width: 760px) {
+  body { height: auto; }
+  .workbench { display: flex; flex-direction: column; }
+  #main-panel { order: 1; }
+  #side-panel { order: 2; }
+  #tables-panel { order: 3; }
+  #main-panel, #side-panel, .panel { overflow: visible; }
+  #tables-panel { max-height: none; }
+  .results-wrap { max-height: 60vh; }
+  .side-body { overflow: visible; }
+}
+
+.label { font-size: var(--step--1); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+/* Tables rail */
+.tables-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.table-list { display: flex; flex-direction: column; gap: 12px; }
+.table-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.table-card.legacy { border-style: dashed; }
+.table-name {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px; width: 100%;
+  border: 0; background: none; color: var(--fg); padding: 8px 10px 4px; text-align: left;
+}
+.table-name strong { font-family: var(--font-mono); font-weight: 500; }
+.table-name:hover strong { color: var(--accent); }
+.table-name .count { color: var(--muted); font-size: var(--step--1); font-variant-numeric: tabular-nums; }
+.table-note { margin: 0 10px 4px; font-size: var(--step--1); color: var(--muted); }
+.columns { list-style: none; margin: 0; padding: 0 10px 8px; font-size: var(--step--1); }
+.columns li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; padding: 1px 0; }
+.columns .col { font-family: var(--font-mono); }
+.columns .type { color: var(--muted); }
+.badge {
+  font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 0 5px; border-radius: 4px; border: 1px solid var(--border); color: var(--muted);
+}
+.badge.pk { color: var(--accent); border-color: currentColor; }
+.badge.fk { color: var(--focus); border-color: currentColor; }
+
+/* Editor and results */
+.editor-box { display: flex; flex-direction: column; gap: 8px; }
+.editor-box label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+#sql-editor {
+  width: 100%; min-height: 9rem; resize: vertical; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--fg);
+  font-size: var(--step-0); line-height: 1.55; tab-size: 2;
+}
+#sql-editor:focus-visible { outline-offset: 0; }
+.editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.kbd { font-size: var(--step--1); color: var(--muted); }
+.kbd kbd { font-family: var(--font-mono); font-size: 0.75rem; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--surface); }
+
+.result-summary { font-size: var(--step--1); color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.5em; }
+.results-wrap {
+  flex: 1; min-height: 8rem; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+}
+.results-empty { padding: 16px; color: var(--muted); font-size: var(--step--1); }
+table.results { border-collapse: collapse; font-size: var(--step--1); font-variant-numeric: tabular-nums; width: max-content; min-width: 100%; }
+table.results th, table.results td { padding: 5px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--border); }
+table.results th { position: sticky; top: 0; background: var(--surface-2); font-family: var(--font-mono); font-weight: 500; }
+table.results td.num { text-align: right; }
+table.results td.null { color: var(--muted); font-style: italic; }
+table.results tr:last-child td { border-bottom: 0; }
+
+.notice {
+  border: 1px solid var(--notice-border); background: var(--notice-bg); color: var(--fg);
+  border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;
+}
+.notice .notice-title { color: var(--notice); font-weight: 600; }
+.notice .notice-message { font-family: var(--font-mono); font-size: var(--step--1); overflow-wrap: anywhere; }
+.notice .notice-help { font-size: var(--step--1); }
+.notice ol { margin: 4px 0 0; padding-left: 1.2em; font-size: var(--step--1); }
+
+/* Exercises and break-it */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+.tab {
+  border: 0; background: none; color: var(--muted); padding: 6px 10px 8px; font-weight: 600; font-size: var(--step--1);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.side-body { flex: 1; min-height: 0; overflow: auto; padding-top: 12px; }
+.progress { font-size: var(--step--1); color: var(--muted); margin: 0 0 12px; font-variant-numeric: tabular-nums; }
+.level { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.level h2 { font-size: var(--step-1); }
+.exercise { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.exercise.solved { border-color: var(--ok); }
+.exercise-head { display: flex; gap: 10px; align-items: baseline; }
+.exercise-num { font-family: var(--font-mono); color: var(--muted); font-size: var(--step--1); min-width: 1.6em; }
+.exercise.solved .exercise-num { color: var(--ok); }
+.exercise-prompt { margin: 0; flex: 1; }
+.chip { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.chip.done { background: var(--ok-bg); color: var(--ok); }
+.exercise-actions { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding-left: calc(1.6em + 10px); }
+.exercise-extra { margin-left: calc(1.6em + 10px); }
+.exercise .hint { margin-block: 0; font-size: var(--step--1); }
+pre.sql { margin: 0 0 6px; padding: 8px 10px; background: var(--code-bg); border-radius: var(--radius); font-size: var(--step--1); overflow-x: auto; }
+.verdict { font-size: var(--step--1); border-radius: var(--radius); padding: 6px 10px; }
+.verdict.ok { background: var(--ok-bg); color: var(--ok); font-weight: 500; }
+.verdict.bad { background: var(--notice-bg); color: var(--fg); border: 1px solid var(--notice-border); }
+
+.break-intro { margin: 0 0 12px; font-size: var(--step--1); color: var(--muted); }
+.break-list { display: flex; flex-direction: column; gap: 10px; }
+.break-item { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.break-item.sheet { border-style: dashed; }
+.break-item p { margin: 0; font-size: var(--step--1); }
+.break-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <h1>Club Events <span>SQL</span></h1>
+    <p>Road2SWE databases workshop</p>
+  </div>
+  <div class="spacer"></div>
+  <span id="status" class="status" data-state="loading" role="status">Starting Postgres…</span>
+  <button id="reset-button" class="btn" type="button" disabled>Reset database</button>
+</header>
+
+<main class="workbench">
+  <aside id="tables-panel" class="panel" aria-labelledby="tables-heading">
+    <div class="tables-head">
+      <h2 id="tables-heading" class="label">Tables</h2>
+    </div>
+    <div id="table-list" class="table-list"><p class="results-empty">Tables appear once Postgres is running.</p></div>
+  </aside>
+
+  <section id="main-panel" aria-label="SQL editor and results">
+    <div class="editor-box">
+      <label for="sql-editor"><span class="label">Your SQL</span><span class="kbd"><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> runs</span></label>
+      <textarea id="sql-editor" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="SELECT * FROM students LIMIT 10;"></textarea>
+      <div class="editor-actions">
+        <button id="run-button" class="btn btn-primary" type="button" disabled>Run</button>
+        <button id="clear-button" class="btn" type="button">Clear</button>
+      </div>
+    </div>
+    <div id="result-summary" class="result-summary" aria-live="polite"></div>
+    <div id="results" class="results-wrap"><p class="results-empty">Results show up here.</p></div>
+  </section>
+
+  <section id="side-panel" aria-label="Exercises">
+    <div class="tabs" role="tablist">
+      <button id="tab-exercises" class="tab" role="tab" type="button" aria-selected="true" aria-controls="exercises-view">Exercises</button>
+      <button id="tab-break" class="tab" role="tab" type="button" aria-selected="false" aria-controls="break-view">Try to break it</button>
+    </div>
+    <div class="side-body">
+      <div id="exercises-view" role="tabpanel" aria-labelledby="tab-exercises"></div>
+      <div id="break-view" role="tabpanel" aria-labelledby="tab-break" hidden></div>
+    </div>
+  </section>
+</main>
+
+<noscript><p class="notice">This page runs PostgreSQL inside your browser and needs JavaScript turned on.</p></noscript>
+<script type="module" src="app.js"></script>
+</body>
+</html>
