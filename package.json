@@ -1,0 +1,12 @@
+{
+  "name": "databases-workshop",
+  "private": true,
+  "description": "Road2SWE databases workshop: club-events database, in-browser Postgres page, and tests.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\""
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.16"
+  }
+}
