@@ -9,7 +9,7 @@ import { PGlite } from '@electric-sql/pglite';
 const SQL_DIR = new URL('../sql/', import.meta.url);
 
 /**
- * Read one file from databases-workshop/sql/.
+ * Read one file from sql/.
  * @param {string} name file name, e.g. "schema.sql"
  * @returns {Promise<string>}
  */

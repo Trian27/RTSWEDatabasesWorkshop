@@ -5,7 +5,7 @@
  * real workshop data and SQL files (sql/schema.sql, sql/seed.sql, sql/exercises.sql,
  * sql/break_it.sql), so the deck cannot drift from what mentees see on the workshop page.
  *
- * Setup and run, from databases-workshop/:
+ * Setup and run, from the repository root:
  *   npm install                                 # PGlite, used to load the real data
  *   (pptxgenjs is a devDependency, so npm install covers it)
  *   node slides/build_slides.cjs [--out slides/databases-workshop.pptx] [--page-url https://...]
@@ -27,7 +27,7 @@ let pptxgen;
 try {
   pptxgen = require('pptxgenjs');
 } catch (error) {
-  console.error('Cannot load pptxgenjs. From databases-workshop/, run `npm install`, '
+  console.error('Cannot load pptxgenjs. From the repository root, run `npm install`, '
     + 'or set NODE_PATH to a node_modules folder that has it.');
   process.exit(1);
 }

@@ -76,7 +76,7 @@ The data is generated (see README), but these facts are fixed so every exercise 
 
 About 30–40 minutes, alone, with the same slides and page you will use in the room.
 
-1. Start the page: `cd databases-workshop && python3 -m http.server 8000`, then open http://localhost:8000 in Chrome. The status pill at the top should say **Ready · PostgreSQL 18.6** within a few seconds.
+1. Start the page: from the repository root, run `python3 -m http.server 8000`, then open http://localhost:8000 in Chrome. The status pill at the top should say **Ready · PostgreSQL 18.6** within a few seconds.
 2. Open `slides/databases-workshop.pptx` in PowerPoint or Keynote, in presenter view so you see the speaker notes. Check that the bar charts on slides 11 and 12 draw.
 3. Put the slides and the page side by side and go through Stages 1–6 below in order, doing every numbered step. Each step says what you should see.
 4. Stage 2: spend 2 minutes sketching your own tables from the brief instead of 10, then compare them with slide 6.
@@ -92,7 +92,7 @@ The page remembers your solved exercises in your browser, separately for each ad
 
 ## Before the workshop
 
-- Host the page: push `main` and turn on GitHub Pages (README, "Open the workshop page"). The link is https://trian27.github.io/RTSWE/databases-workshop/, and slide 16 already shows it. Open it on a laptop that isn't on your network and check that it reaches "Ready".
+- Host the page: push `main` and turn on GitHub Pages (README, "Open the workshop page"). The link is https://trian27.github.io/RTSWEDatabasesWorkshop/, and slide 16 already shows it. Open it on a laptop that isn't on your network and check that it reaches "Ready".
 - Have the link ready to paste in the group chat.
 - Make the page's text large enough for the back row (browser zoom, Ctrl/Cmd +).
 - Optional: if you'd rather project psql than the page, load the data first with `createdb club_events && psql -d club_events -f sql/schema.sql -f sql/seed.sql`. For the break-it demo in psql, run `\set ON_ERROR_STOP off` first.
