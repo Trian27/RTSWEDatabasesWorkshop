@@ -1,1 +1,3 @@
 node_modules/
+# Office lock files while a deck is open
+~$*

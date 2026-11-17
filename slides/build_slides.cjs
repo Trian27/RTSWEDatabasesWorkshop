@@ -143,6 +143,127 @@ async function loadFacts() {
   return facts;
 }
 
+// ---------------------------------------------------------------- design-concept example
+
+/**
+ * The made-up course-registration database the design-concept slides teach with. It is deliberately not the
+ * club database, so mentees still design that one themselves. checkCourseExample() runs all of it in PGlite.
+ */
+const COURSE_EXAMPLE = {
+  departments: [[198, 'Computer Science'], [640, 'Mathematics']],
+  courses: [
+    ['01:198:111', 198, 'Intro to Computer Science', 4],
+    ['01:198:112', 198, 'Data Structures', 4],
+    ['01:640:151', 640, 'Calculus I', 4],
+  ],
+  students: [['ab336', 'Aisha Bailey', 'ab336@example.edu'], ['sk101', 'Scarlet Knight', 'sk101@example.edu']],
+  enrollments: [['ab336', '01:198:111', 'A'], ['ab336', '01:640:151', 'B+'], ['sk101', '01:198:111', 'A']],
+};
+
+/** The CREATE TABLE shown on the rules slide; COURSE_SCHEMA_SQL embeds it so the slide shows SQL that really runs. */
+const COURSES_TABLE_SQL = `CREATE TABLE courses (
+  course_id TEXT PRIMARY KEY,
+  dept_id   INTEGER NOT NULL REFERENCES departments,
+  title     TEXT NOT NULL,
+  credits   INTEGER CHECK (credits > 0)
+);`;
+
+const COURSE_SCHEMA_SQL = `CREATE TABLE departments (dept_id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
+${COURSES_TABLE_SQL}
+CREATE TABLE students (netid TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE);
+CREATE TABLE enrollments (
+  netid TEXT REFERENCES students, course_id TEXT REFERENCES courses, grade TEXT,
+  PRIMARY KEY (netid, course_id)
+);`;
+
+/** One row of the rules slide; every statement in `breaks` must fail with its SQLSTATE or the build stops. */
+const COURSE_RULES = [
+  {
+    rule: 'PRIMARY KEY', means: 'Names exactly one row: unique and never empty', stops: 'Two courses with id 01:198:111, or a course with no id',
+    breaks: [
+      { sql: "INSERT INTO courses VALUES ('01:198:111', 198, 'Copy', 4)", expect: '23505' },
+      { sql: "INSERT INTO courses VALUES (NULL, 198, 'No id', 4)", expect: '23502' },
+    ],
+  },
+  {
+    rule: 'REFERENCES (FK)', means: 'Must match a row that exists in the other table', stops: "A course in department 999, which doesn't exist, or deleting a department that still has courses",
+    breaks: [
+      { sql: "INSERT INTO courses VALUES ('01:999:101', 999, 'Ghost', 3)", expect: '23503' },
+      { sql: 'DELETE FROM departments WHERE dept_id = 198', expect: '23503' },
+    ],
+  },
+  {
+    rule: 'UNIQUE', means: 'No two rows share this value', stops: 'Two students with the same email',
+    breaks: [{ sql: "INSERT INTO students VALUES ('cc1', 'Copy Cat', 'sk101@example.edu')", expect: '23505' }],
+  },
+  {
+    rule: 'NOT NULL', means: 'A value is required', stops: 'A course with no title',
+    breaks: [{ sql: "INSERT INTO courses VALUES ('01:198:205', 198, NULL, 4)", expect: '23502' }],
+  },
+  {
+    rule: 'CHECK (…)', means: 'The value must pass a test you write', stops: 'A course worth -3 credits',
+    breaks: [{ sql: "INSERT INTO courses VALUES ('01:198:206', 198, 'Negative', -3)", expect: '23514' }],
+  },
+];
+
+/** Keywords highlighted in CREATE TABLE code. */
+const DDL_KEYWORDS = new Set('CREATE TABLE PRIMARY KEY REFERENCES NOT NULL UNIQUE CHECK INTEGER TEXT VARCHAR'.split(' '));
+
+/** Render rows as one INSERT statement (the example values contain no quotes). */
+function insertRows(table, rows) {
+  const value = (v) => (typeof v === 'number' ? String(v) : `'${v}'`);
+  return `INSERT INTO ${table} VALUES ${rows.map((row) => `(${row.map(value).join(', ')})`).join(', ')};`;
+}
+
+/** Build the course example in a fresh PGlite and confirm every rule refuses exactly what the rules slide says it stops. */
+async function checkCourseExample() {
+  const { PGlite } = await import('@electric-sql/pglite');
+  const db = new PGlite();
+  await db.exec(COURSE_SCHEMA_SQL);
+  await db.exec(Object.entries(COURSE_EXAMPLE).map(([table, rows]) => insertRows(table, rows)).join('\n'));
+  for (const rule of COURSE_RULES) {
+    for (const attempt of rule.breaks) {
+      let outcome = 'accepted';
+      try {
+        await db.exec(attempt.sql);
+      } catch (error) {
+        outcome = error.code;
+      }
+      if (outcome !== attempt.expect) {
+        throw new Error(`Rules slide, ${rule.rule}: "${attempt.sql}" should fail with SQLSTATE ${attempt.expect} but was ${outcome}.`);
+      }
+    }
+  }
+  await db.close();
+}
+
+/** What the brief asks for; shared by the brief slide and the design slide. */
+const BRIEF_QUESTIONS = ['Which events are overbooked?', 'Which club has the best turnout?', 'Which events has a given student signed up for?'];
+
+/** Popular databases built for other shapes of data, for the "other databases" slide. */
+const OTHER_DATABASES = [
+  {
+    name: 'Elasticsearch / OpenSearch', kind: 'Search', color: HEX.accent2,
+    about: 'Stores JSON documents and finds them by their text: ranked results, typo-tolerant matching, filters. OpenSearch is the open-source fork of Elasticsearch.',
+    uses: 'search boxes on shopping and documentation sites; searching logs',
+  },
+  {
+    name: 'DynamoDB', kind: 'Key-value', color: HEX.accent6,
+    about: "Amazon's database for huge amounts of data with fast lookups by key. It grew out of Amazon's Dynamo design, which spreads data around a hash ring, the same idea as the Chord lookup system.",
+    uses: 'shopping carts, user sessions, game state',
+  },
+  {
+    name: 'Splunk', kind: 'Logs', color: HEX.accent5,
+    about: 'Collects logs and other machine data from servers and apps, and lets you search and chart it by time.',
+    uses: 'finding out why the site crashed at 2 a.m.; security monitoring',
+  },
+  {
+    name: 'Neo4j', kind: 'Graph', color: HEX.accent4,
+    about: "Stores things as nodes and their connections as relationships, so following chains of connections is fast. 'Friends of friends of friends' takes several JOINs in SQL.",
+    uses: 'social networks, recommendations, fraud detection',
+  },
+];
+
 // ---------------------------------------------------------------- drawing helpers
 
 const fmt = (n) => Number(n).toLocaleString('en-US');
@@ -249,7 +370,10 @@ function connector(slide, x1, y1, x2, y2, { color = HEX.accent2, width = 2, arro
   slide.addShape('line', { ...box, line, flipH: x2 < x1, flipV: y2 < y1 });
 }
 
-/** A grid of cells, used for small sample tables. Returns cell geometry for drawing arrows. */
+/**
+ * A grid of cells, used for small sample tables. Returns cell geometry for drawing arrows.
+ * `code` is true (every cell monospaced), false, or a function (columnIndex, isHeader) => boolean.
+ */
 function grid(slide, { x, y, colW, rowH = 0.38, header, rows, fontSize = SIZE.caption, code = true, cellFill }) {
   const all = [header, ...rows];
   const cells = [];
@@ -259,9 +383,10 @@ function grid(slide, { x, y, colW, rowH = 0.38, header, rows, fontSize = SIZE.ca
     row.forEach((value, c) => {
       const isHeader = r === 0;
       const fill = isHeader ? HEX.dk2 : (cellFill && cellFill(r - 1, c)) || (r % 2 ? HEX.lt1 : MUTED_FILL);
+      const mono = typeof code === 'function' ? code(c, isHeader) : code;
       slide.addText(String(value), {
         isTextBox: true, shape: 'rect', x: cx, y: y + r * rowH, w: colW[c], h: rowH, margin: inset(6),
-        valign: 'middle', fontSize, bold: isHeader, fontFace: code ? CODE_FONT : undefined,
+        valign: 'middle', fontSize, bold: isHeader, fontFace: mono ? CODE_FONT : undefined,
         color: isHeader ? HEX.lt1 : HEX.dk1, fill: { color: fill }, line: { color: LIGHT_BORDER, width: 0.75 },
         fit: 'none',
       });
@@ -270,6 +395,24 @@ function grid(slide, { x, y, colW, rowH = 0.38, header, rows, fontSize = SIZE.ca
     });
   });
   return cells;
+}
+
+/** PK/FK badges centered just above a grid's header cells, e.g. keys = { 0: ['PK'], 1: ['FK'] }. */
+function keyBadgesAbove(slide, headerCells, keys) {
+  Object.entries(keys).forEach(([column, labels]) => {
+    const cell = headerCells[Number(column)];
+    const totalW = labels.length * 0.48 - 0.06;
+    labels.forEach((label, k) => badge(slide, label, {
+      x: cell.x + (cell.w - totalW) / 2 + k * 0.48, y: cell.y - 0.33, fill: label === 'PK' ? HEX.accent1 : HEX.accent2,
+    }));
+  });
+}
+
+/** A light card with a short heading and smaller body text, for slides that hold three or more cards. */
+function smallCard(slide, { x, y, w, h, heading, body }) {
+  slide.addShape('roundRect', { x, y, w, h, fill: { color: MUTED_FILL }, line: { color: MUTED_FILL }, rectRadius: 0.08 });
+  text(slide, heading, { x: x + 0.25, y: y + 0.18, w: w - 0.5, h: 0.4, fontSize: SIZE.heading, bold: true });
+  text(slide, body, { x: x + 0.25, y: y + 0.68, w: w - 0.5, h: h - 0.8, fontSize: SIZE.small });
 }
 
 /** A big number with a short label under it. */
@@ -365,7 +508,8 @@ function slideTitle(pres, section, facts) {
   connector(slide, x2 + cardW / 2, rsvps.top, x2 + cardW / 2, events.bottom, { color: '8FB8C8' });
   slide.addNotes(`Welcome. Today: design a database for club events, query real data (${fmt(facts.counts.rsvps)} RSVPs), `
     + 'and see one case where a document database fits better.\n'
-    + 'Plan: 5 min old sheet, 12 min design in groups, 8 min reveal and break it, 23 min queries, 9 min MongoDB, 3 min wrap-up.');
+    + 'Plan: 5 min old sheet, 8 min design tools, 11 min design in groups, 5 min reveal and break it, 19 min queries, '
+    + '9 min MongoDB and other databases, 3 min wrap-up.');
 }
 
 function slideOldSheet(pres, section, facts) {
@@ -430,7 +574,7 @@ function slideSheetProblems(pres, section, facts) {
 }
 
 function slideBrief(pres, section) {
-  const slide = addSlide(pres, section, 'CONTENT_DARK', 'Your turn: design the database');
+  const slide = addSlide(pres, section, 'CONTENT_DARK', 'Your job: replace the sign-up sheet');
   text(slide, 'USACS wants to replace its sign-up sheet. Students have a NetID, name, email, and graduation year. '
     + 'Clubs host events; each event has a title, date, location, and capacity. Students RSVP to events, and '
     + 'afterwards we record whether they actually came.', {
@@ -439,19 +583,196 @@ function slideBrief(pres, section) {
   text(slide, 'Your design must answer:', {
     x: MARGIN, y: CONTENT_TOP + 2.35, w: 7.6, h: 0.45, fontSize: SIZE.heading, bold: true, color: HEX.accent3,
   });
-  markerList(slide, ['Which events are overbooked?', 'Which club has the best turnout?', 'Which events has a given student signed up for?'], {
+  markerList(slide, BRIEF_QUESTIONS, {
     x: MARGIN, y: CONTENT_TOP + 2.95, w: 7.6, itemH: 0.55, fontSize: SIZE.heading, color: HEX.lt1, markerColor: HEX.accent3,
   });
-  const cx = 10.45;
-  const cy = 3.7;
-  const r = 1.45;
-  slide.addShape('ellipse', { x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, fill: { color: HEX.dk2 }, line: { color: HEX.accent3, width: 6 } });
-  text(slide, '10:00', { x: cx - r, y: cy - 0.55, w: 2 * r, h: 0.9, align: 'center', valign: 'middle', fontFace: 'Georgia', fontSize: 48, bold: true, color: HEX.lt1 });
-  text(slide, 'minutes', { x: cx - r, y: cy + 0.35, w: 2 * r, h: 0.4, align: 'center', fontSize: SIZE.small, color: 'C9D1DD' });
-  text(slide, 'Groups of 2–3 · paper\nList tables, their columns, and which column identifies a row.', {
-    x: cx - 2.0, y: cy + r + 0.3, w: 4.0, h: 0.9, align: 'center', fontSize: SIZE.small, color: 'C9D1DD',
+  const boxX = 8.75;
+  const boxW = SLIDE_W - MARGIN - boxX;
+  slide.addShape('roundRect', { x: boxX, y: CONTENT_TOP + 0.1, w: boxW, h: 4.9, fill: { color: '2A3550' }, line: { color: '2A3550' }, rectRadius: 0.08 });
+  text(slide, 'First, the tools', { x: boxX + 0.35, y: CONTENT_TOP + 0.35, w: boxW - 0.7, h: 0.45, fontSize: SIZE.heading, bold: true, color: HEX.accent3 });
+  markerList(slide, ['Tables, rows, and columns', 'Primary keys', 'Foreign keys', 'One-to-many', 'Many-to-many', 'Rules the database enforces'], {
+    x: boxX + 0.35, y: CONTENT_TOP + 1.0, w: boxW - 0.7, itemH: 0.5, fontSize: SIZE.body, color: HEX.lt1, markerColor: HEX.accent3,
   });
-  slide.addNotes('Groups of 2-3 sketch tables on paper for 10 minutes. Ask for: the tables, the columns in each, and which column identifies a row.\n'
+  text(slide, 'Then you design it in groups.', { x: boxX + 0.35, y: CONTENT_TOP + 4.2, w: boxW - 0.7, h: 0.5, fontSize: SIZE.body, italic: true, color: 'C9D1DD' });
+  slide.addNotes('Read the brief aloud so everyone knows what they will design. Do not start yet: the next four slides are the tools '
+    + 'they need, taught on a different example (course registration). Groups design on the "Your turn" slide.');
+}
+
+function slideTablesAndKeys(pres, section, facts) {
+  const slide = addSlide(pres, section, 'CONTENT', 'Tables, rows, columns, and primary keys');
+  text(slide, 'Example: a course-registration database (not the one you will design)', {
+    x: MARGIN, y: CONTENT_TOP - 0.1, w: 7, h: 0.35, fontSize: SIZE.small, italic: true, color: HEX.accent5,
+  });
+  const rowTint = 'FBE7B5';
+  const columnTint = 'D7ECF2';
+  const rowH = 0.5;
+  const top = CONTENT_TOP + 1.25;
+  slide.addText('courses', {
+    isTextBox: true, shape: 'rect', x: MARGIN, y: top - 0.92, w: 1.5, h: 0.42, margin: inset(10), valign: 'middle',
+    fontFace: CODE_FONT, fontSize: SIZE.body, bold: true, color: HEX.lt1, fill: { color: HEX.accent2 }, line: { color: HEX.accent2 },
+  });
+  const cells = grid(slide, {
+    x: MARGIN, y: top, colW: [1.9, 3.1, 1.15], rowH, fontSize: SIZE.small,
+    header: ['course_id', 'title', 'credits'],
+    rows: COURSE_EXAMPLE.courses.map(([id, , title, credits]) => [id, title, credits]),
+    cellFill: (r, c) => (r === 0 ? rowTint : c === 2 ? columnTint : null),
+  });
+  keyBadgesAbove(slide, cells[0], { 0: ['PK'] });
+  const legendY = top + 4 * rowH + 0.25;
+  const legend = [
+    [HEX.accent2, 'Table: ', 'one kind of thing. This one holds courses.'],
+    [rowTint, 'Row: ', 'one thing, here one course.'],
+    [columnTint, 'Column: ', 'one fact about every row, with a type: TEXT, INTEGER, DATE, or BOOLEAN (true/false).'],
+  ];
+  legend.forEach(([color, term, body], i) => {
+    const y = legendY + i * 0.55;
+    slide.addShape('rect', { x: MARGIN, y: y + 0.05, w: 0.28, h: 0.28, fill: { color }, line: { color: LIGHT_BORDER, width: 0.75 } });
+    text(slide, [{ text: term, options: { bold: true } }, { text: body }], { x: MARGIN + 0.45, y, w: 5.75, h: 0.6, fontSize: SIZE.body });
+  });
+  const cardX = 7.4;
+  const cardW = SLIDE_W - MARGIN - cardX;
+  const cardY = CONTENT_TOP + 0.35;
+  slide.addShape('roundRect', { x: cardX, y: cardY, w: cardW, h: 4.85, fill: { color: MUTED_FILL }, line: { color: MUTED_FILL }, rectRadius: 0.08 });
+  labeledShape(slide, 'ellipse', 'PK', { x: cardX + 0.3, y: cardY + 0.3, w: 0.8, h: 0.8, fill: HEX.accent1, fontSize: SIZE.heading });
+  text(slide, 'Primary key', { x: cardX + 1.3, y: cardY + 0.45, w: cardW - 1.6, h: 0.5, valign: 'middle', fontSize: SIZE.heading, bold: true });
+  text(slide, 'The column whose value names exactly one row. It must be unique, never empty, and should not change.', {
+    x: cardX + 0.3, y: cardY + 1.35, w: cardW - 0.6, h: 1.2, fontSize: SIZE.body,
+  });
+  text(slide, 'Good keys', { x: cardX + 0.3, y: cardY + 2.6, w: cardW - 0.6, h: 0.35, fontSize: SIZE.body, bold: true, color: HEX.accent4 });
+  text(slide, 'A NetID, a course code like 01:198:111, or an id number the database assigns.', {
+    x: cardX + 0.3, y: cardY + 2.95, w: cardW - 0.6, h: 0.75, fontSize: SIZE.small,
+  });
+  text(slide, 'Bad keys', { x: cardX + 0.3, y: cardY + 3.7, w: cardW - 0.6, h: 0.35, fontSize: SIZE.body, bold: true, color: HEX.accent1 });
+  text(slide, `A name or a title: two people can share one. In our club data, ${facts.mostSharedName.n} students are named ${facts.mostSharedName.name}.`, {
+    x: cardX + 0.3, y: cardY + 4.05, w: cardW - 0.6, h: 0.75, fontSize: SIZE.small,
+  });
+  slide.addNotes('Vocabulary first: a table holds one kind of thing, a row is one of them, a column is one fact about each, with a type.\n'
+    + 'The primary key is how you point at exactly one row. Ask: could two courses share a title? Could two students share a name?');
+}
+
+function slideForeignKeys(pres, section) {
+  const slide = addSlide(pres, section, 'CONTENT', 'Foreign keys connect tables: one-to-many');
+  const deptTint = { 198: 'D7ECF2', 640: 'FBE7B5' };
+  const rowH = 0.48;
+  const top = CONTENT_TOP + 0.75;
+  const deptColW = [1.4, 2.4];
+  const courseX = MARGIN + deptColW[0] + deptColW[1] + 1.55;
+  const label = (value, x) => text(slide, value, { x, y: top - 0.85, w: 3, h: 0.4, fontFace: CODE_FONT, fontSize: SIZE.body, bold: true });
+  label('departments', MARGIN);
+  label('courses', courseX);
+  const dept = grid(slide, {
+    x: MARGIN, y: top, colW: deptColW, rowH, header: ['dept_id', 'name'], rows: COURSE_EXAMPLE.departments,
+    cellFill: (r) => deptTint[COURSE_EXAMPLE.departments[r][0]],
+  });
+  const courses = grid(slide, {
+    x: courseX, y: top, colW: [1.75, 1.35, 3.15], rowH, header: ['course_id', 'dept_id', 'title'],
+    rows: COURSE_EXAMPLE.courses.map(([id, deptId, title]) => [id, deptId, title]),
+    cellFill: (r, c) => (c === 1 ? deptTint[COURSE_EXAMPLE.courses[r][1]] : null),
+  });
+  keyBadgesAbove(slide, dept[0], { 0: ['PK'] });
+  keyBadgesAbove(slide, courses[0], { 0: ['PK'], 1: ['FK'] });
+  const arrowY = top + rowH * 1.5;
+  const deptRight = MARGIN + deptColW[0] + deptColW[1];
+  connector(slide, courseX - 0.1, arrowY, deptRight + 0.1, arrowY);
+  const tag = (value, x) => text(slide, value, { x, y: arrowY - 0.42, w: 0.7, h: 0.3, fontSize: SIZE.caption, bold: true, color: HEX.accent2, align: 'center' });
+  tag('1', deptRight);
+  tag('many', courseX - 0.75);
+  text(slide, 'Matching colors: each course\'s dept_id is a dept_id that exists in departments.', {
+    x: MARGIN, y: top + 4 * rowH + 0.15, w: CONTENT_W, h: 0.35, fontSize: SIZE.small, italic: true, color: HEX.accent5,
+  });
+  const cardY = 4.75;
+  const w = (CONTENT_W - 2 * GAP) / 3;
+  [
+    ['Foreign key (FK)', 'A column that holds another table\'s primary key. Postgres checks that the row it points at exists.'],
+    ['One-to-many', 'One department offers many courses. Each course belongs to exactly one department.'],
+    ['Which side?', 'The FK goes on the many side: each course stores one dept_id. A cell holds one value, so a department cannot list its courses.'],
+  ].forEach(([heading, body], i) => smallCard(slide, { x: MARGIN + i * (w + GAP), y: cardY, w, h: 2.0, heading, body }));
+  slide.addNotes('A foreign key is a pointer: courses.dept_id holds a dept_id from departments, and Postgres refuses one that does not exist.\n'
+    + 'Rule of thumb for one-to-many: the many side stores the pointer.');
+}
+
+function slideManyToMany(pres, section) {
+  const slide = addSlide(pres, section, 'CONTENT', 'Many-to-many: add a relationship table');
+  const w = 2.9;
+  const top = CONTENT_TOP + 0.05;
+  const students = tableCard(slide, { x: MARGIN, y: top, w, name: 'students',
+    columns: [{ name: 'netid', keys: ['PK'] }, { name: 'name' }, { name: 'email' }] });
+  const enrollments = tableCard(slide, { x: (SLIDE_W - w) / 2, y: top, w, name: 'enrollments', headerFill: HEX.accent1,
+    columns: [{ name: 'netid', keys: ['PK', 'FK'] }, { name: 'course_id', keys: ['PK', 'FK'] }, { name: 'grade' }] });
+  const courses = tableCard(slide, { x: SLIDE_W - MARGIN - w, y: top, w, name: 'courses',
+    columns: [{ name: 'course_id', keys: ['PK'] }, { name: 'dept_id', keys: ['FK'] }, { name: 'title' }] });
+  connector(slide, enrollments.left, enrollments.centers[0], students.right, students.centers[0]);
+  connector(slide, enrollments.right, enrollments.centers[1], courses.left, courses.centers[0]);
+  const tag = (value, x, y) => text(slide, value, { x, y, w: 0.7, h: 0.3, fontSize: SIZE.caption, bold: true, color: HEX.accent2, align: 'center' });
+  tag('1', students.right, students.centers[0] - 0.38);
+  tag('many', enrollments.left - 0.75, enrollments.centers[0] - 0.38);
+  tag('many', enrollments.right + 0.05, enrollments.centers[1] - 0.38);
+  tag('1', courses.left - 0.7, courses.centers[0] - 0.38);
+  const gridY = 4.0;
+  text(slide, 'enrollments rows', { x: MARGIN, y: gridY - 0.42, w: 3.8, h: 0.35, fontFace: CODE_FONT, fontSize: SIZE.small, bold: true });
+  grid(slide, { x: MARGIN, y: gridY, colW: [1.15, 1.75, 0.9], rowH: 0.45, header: ['netid', 'course_id', 'grade'], rows: COURSE_EXAMPLE.enrollments });
+  text(slide, 'One row per (student, course) pair. Also called a join table.', {
+    x: MARGIN, y: gridY + 4 * 0.45 + 0.1, w: 3.8, h: 0.6, fontSize: SIZE.caption, italic: true, color: HEX.accent5,
+  });
+  const cardsX = MARGIN + 3.8 + 0.5;
+  const cardW = (SLIDE_W - MARGIN - cardsX - GAP) / 2;
+  [
+    ['Why a new table?', 'A student takes many courses, and a course has many students. Putting either side\'s ids in the other table needs a list in a cell, or course1, course2, … columns.'],
+    ['Relationship table', 'One row per pair, with a foreign key to each side. The pair is the primary key, so no one enrolls twice. Facts about the pair, like the grade, live here.'],
+  ].forEach(([heading, body], i) => smallCard(slide, { x: cardsX + i * (cardW + GAP), y: gridY - 0.42, w: cardW, h: 2.95, heading, body }));
+  slide.addNotes('Ask first: where would you store which courses a student takes? Let them hit the list-in-a-cell problem.\n'
+    + 'The fix is a table whose rows are the pairs. Its primary key is both columns together.');
+}
+
+function slideRules(pres, section) {
+  const slide = addSlide(pres, section, 'CONTENT', 'Rules the database enforces');
+  grid(slide, {
+    x: MARGIN, y: CONTENT_TOP, colW: [2.45, 4.1, CONTENT_W - 6.55], rowH: 0.58, fontSize: SIZE.small,
+    header: ['Rule', 'What it means', 'What it stops'], rows: COURSE_RULES.map((r) => [r.rule, r.means, r.stops]),
+    code: (c, isHeader) => c === 0 && !isHeader,
+  });
+  const codeY = CONTENT_TOP + 6 * 0.58 + 0.2;
+  const codeW = 6.3;
+  codeBlock(slide, COURSES_TABLE_SQL, { x: MARGIN, y: codeY, w: codeW, h: 1.7, fontSize: SIZE.caption, keywords: DDL_KEYWORDS });
+  text(slide, 'You write the rules once, when you create the table. Postgres then checks them on every change and refuses anything that breaks one. The old sheet had none of them.', {
+    x: MARGIN + codeW + 0.4, y: codeY, w: CONTENT_W - codeW - 0.4, h: 1.7, valign: 'middle', fontSize: SIZE.body,
+  });
+  slide.addNotes('These rules are the protection. A design is tables plus keys plus rules.\n'
+    + 'The build script runs every "What it stops" example against this exact SQL and checks Postgres refuses it.');
+}
+
+function slideYourTurn(pres, section) {
+  const slide = addSlide(pres, section, 'CONTENT_DARK', 'Your turn: design the club database');
+  const leftW = 6.1;
+  const heading = (value, x, y, w) => text(slide, value, { x, y, w, h: 0.45, fontSize: SIZE.heading, bold: true, color: HEX.accent3 });
+  heading('What it must store', MARGIN, CONTENT_TOP, leftW);
+  markerList(slide, ['Students: NetID, name, email, graduation year', 'Clubs, which host events', 'Events: title, date, location, capacity', 'RSVPs, and afterwards whether the student came'], {
+    x: MARGIN, y: CONTENT_TOP + 0.6, w: leftW, itemH: 0.55, fontSize: SIZE.body, color: HEX.lt1, markerColor: HEX.accent3,
+  });
+  heading('What it must answer', MARGIN, CONTENT_TOP + 3.0, leftW);
+  markerList(slide, BRIEF_QUESTIONS, {
+    x: MARGIN, y: CONTENT_TOP + 3.6, w: leftW, itemH: 0.55, fontSize: SIZE.body, color: HEX.lt1, markerColor: HEX.accent3,
+  });
+  const rightX = MARGIN + leftW + 0.5;
+  const rightW = SLIDE_W - MARGIN - rightX;
+  heading('How to design it', rightX, CONTENT_TOP, rightW);
+  const steps = [
+    ['List the things it stores: one table each.', 0.6],
+    ['List each table\'s columns.', 0.6],
+    ['Pick each table\'s primary key.', 0.6],
+    ['Connect related tables. One-to-many: a foreign key on the many side. Many-to-many: a relationship table.', 1.0],
+    ['Add rules: UNIQUE, NOT NULL, CHECK.', 0.6],
+  ];
+  let y = CONTENT_TOP + 0.6;
+  steps.forEach(([body, h], i) => {
+    labeledShape(slide, 'ellipse', String(i + 1), { x: rightX, y, w: 0.42, h: 0.42, fill: HEX.accent3, color: HEX.dk2, fontSize: SIZE.small, fontFace: 'Georgia' });
+    text(slide, body, { x: rightX + 0.6, y: y + 0.03, w: rightW - 0.6, h, fontSize: SIZE.body, color: HEX.lt1 });
+    y += h;
+  });
+  const pillY = 5.95;
+  slide.addShape('roundRect', { x: rightX, y: pillY, w: rightW, h: 0.75, fill: { color: HEX.dk2 }, line: { color: HEX.accent3, width: 3 }, rectRadius: 0.12 });
+  text(slide, '8:00  ·  groups of 2–3  ·  on paper', { x: rightX, y: pillY, w: rightW, h: 0.75, align: 'center', valign: 'middle', fontSize: SIZE.heading, bold: true, color: HEX.lt1 });
+  slide.addNotes('Groups of 2-3 sketch tables on paper for 8 minutes, following the five steps.\n'
     + 'Walk around with the prompts from the run sheet. Pick two groups with different designs to share for one minute each.');
 }
 
@@ -509,28 +830,6 @@ function slideSchema(pres, section, facts) {
   slide.addNotes('PK = primary key: identifies one row. FK = foreign key: must match a row in another table.\n'
     + 'Arrows point from the foreign key to the row it refers to.\n'
     + 'Compare with the groups\' designs: who had a separate table for sign-ups? Who used NetID as the key?');
-}
-
-function slideKeys(pres, section) {
-  const slide = addSlide(pres, section, 'CONTENT', 'Keys are rules the database enforces');
-  const w = (CONTENT_W - 2 * GAP) / 3;
-  const items = [
-    ['PK', HEX.accent1, 'Primary key', 'One value, one row. A NetID names exactly one student.', 'netid VARCHAR(10)\n  PRIMARY KEY'],
-    ['FK', HEX.accent2, 'Foreign key', 'Must match a real row elsewhere. An event\'s club_id must be a real club.', 'club_id INTEGER NOT NULL\n  REFERENCES clubs (club_id)'],
-    ['PK', HEX.accent1, 'Two-column key', 'The pair must be unique. The same student cannot RSVP to the same event twice.', 'PRIMARY KEY\n  (netid, event_id)'],
-  ];
-  items.forEach(([tag, color, heading, body, sql], i) => {
-    const x = MARGIN + i * (w + GAP);
-    const y = CONTENT_TOP + 0.1;
-    slide.addShape('roundRect', { x, y, w, h: 5.1, fill: { color: MUTED_FILL }, line: { color: MUTED_FILL }, rectRadius: 0.08 });
-    labeledShape(slide, 'ellipse', tag, { x: x + 0.3, y: y + 0.3, w: 0.9, h: 0.9, fill: color, fontSize: SIZE.heading });
-    text(slide, heading, { x: x + 0.3, y: y + 1.45, w: w - 0.6, h: 0.45, fontSize: SIZE.heading, bold: true });
-    text(slide, body, { x: x + 0.3, y: y + 2.0, w: w - 0.6, h: 1.3, fontSize: SIZE.body });
-    codeBlock(slide, sql, { x: x + 0.2, y: y + 3.55, w: w - 0.4, h: 1.25, fontSize: SIZE.caption,
-      keywords: new Set(['PRIMARY', 'KEY', 'REFERENCES', 'NOT', 'NULL', 'INTEGER', 'VARCHAR']) });
-  });
-  slide.addNotes('These three lines come straight from sql/schema.sql.\n'
-    + 'Next slide: we try to break each rule, and Postgres refuses. Ask the room before each statement: will Postgres accept it?');
 }
 
 function slideProtects(pres, section, facts) {
@@ -798,12 +1097,34 @@ function slideTradeoffs(pres, section) {
     + 'Both directions are real; pick by the shape of the data and the questions you need to ask.');
 }
 
+function slideOtherDatabases(pres, section) {
+  const slide = addSlide(pres, section, 'CONTENT', 'Other databases you will hear about');
+  const w = (CONTENT_W - GAP) / 2;
+  const h = 2.45;
+  OTHER_DATABASES.forEach((db, i) => {
+    const x = MARGIN + (i % 2) * (w + GAP);
+    const y = CONTENT_TOP + Math.floor(i / 2) * (h + GAP);
+    slide.addShape('roundRect', { x, y, w, h, fill: { color: MUTED_FILL }, line: { color: MUTED_FILL }, rectRadius: 0.08 });
+    text(slide, db.name, { x: x + 0.3, y: y + 0.2, w: w - 1.95, h: 0.45, valign: 'middle', fontSize: SIZE.heading, bold: true });
+    labeledShape(slide, 'roundRect', db.kind, { x: x + w - 1.55, y: y + 0.25, w: 1.25, h: 0.36, fill: db.color, fontSize: SIZE.caption, rectRadius: 0.06 });
+    text(slide, db.about, { x: x + 0.3, y: y + 0.8, w: w - 0.6, h: 1.05, fontSize: SIZE.small });
+    text(slide, [{ text: 'Used for: ', options: { bold: true } }, { text: db.uses }], {
+      x: x + 0.3, y: y + 1.9, w: w - 0.6, h: 0.45, fontSize: SIZE.small, color: HEX.accent5,
+    });
+  });
+  slide.addNotes('Mention briefly, about 2 minutes. Each is built for one kind of question; same lesson as MongoDB: '
+    + 'pick the database by the shape of your data and the questions you ask.\n'
+    + 'DynamoDB background: Amazon\'s 2007 Dynamo paper places data on a consistent-hashing ring, like the Chord lookup protocol. '
+    + 'Dynamo: https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf  '
+    + 'Chord: https://pdos.csail.mit.edu/papers/chord:sigcomm01/chord_sigcomm.pdf');
+}
+
 function slideWrap(pres, section, facts, pageUrl) {
   const slide = addSlide(pres, section, 'CONTENT_DARK', 'What to remember');
   const points = [
     ['1', 'Design decides which mistakes are even possible. The database enforces the rules for you.'],
     ['2', 'JOIN connects tables, GROUP BY summarizes them, constraints protect them.'],
-    ['3', 'Pick tables or documents by the shape of your data and the questions you ask.'],
+    ['3', 'Pick the kind of database by the shape of your data and the questions you ask.'],
   ];
   points.forEach(([n, body], i) => {
     const y = CONTENT_TOP + 0.1 + i * 1.15;
@@ -871,6 +1192,7 @@ function parseArgs(argv) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const facts = await loadFacts();
+  await checkCourseExample();
   const pres = new pptxgen();
   pres.layout = 'LAYOUT_WIDE';
   pres.title = 'Databases: design first';
@@ -878,15 +1200,19 @@ async function main() {
   pres.theme = { headFontFace: THEME.headFontFace, bodyFontFace: THEME.bodyFontFace };
   defineLayouts(pres);
 
-  const sections = ['Why design matters', 'Design it', 'Ask questions with SQL', 'When documents fit', 'Wrap-up'];
+  const sections = ['Why design matters', 'Design it', 'Ask questions with SQL', 'Beyond tables', 'Wrap-up'];
   sections.forEach((title) => pres.addSection({ title }));
   slideTitle(pres, sections[0], facts);
   slideOldSheet(pres, sections[0], facts);
   slideSheetProblems(pres, sections[0], facts);
   slideBrief(pres, sections[1]);
+  slideTablesAndKeys(pres, sections[1], facts);
+  slideForeignKeys(pres, sections[1]);
+  slideManyToMany(pres, sections[1]);
+  slideRules(pres, sections[1]);
+  slideYourTurn(pres, sections[1]);
   slideCommonDesigns(pres, sections[1], facts);
   slideSchema(pres, sections[1], facts);
-  slideKeys(pres, sections[1]);
   slideProtects(pres, sections[1], facts);
   slideSelect(pres, sections[2], facts);
   slideJoin(pres, sections[2], facts);
@@ -895,6 +1221,7 @@ async function main() {
   slideForms(pres, sections[3]);
   slideDocuments(pres, sections[3]);
   slideTradeoffs(pres, sections[3]);
+  slideOtherDatabases(pres, sections[3]);
   slideWrap(pres, sections[4], facts, args.pageUrl);
 
   await pres.writeFile({ fileName: args.out });

@@ -16,7 +16,7 @@ A 1-hour, hands-on workshop for Road2SWE mentees with little or no SQL experienc
 
 ## Domain and design arc
 
-Domain: club events. Mentees receive a requirements brief, sketch tables on paper in groups, then compare with the reference schema. A 5-minute opener shows the "old sheet" (one flat table) and its visible inconsistencies to motivate the exercise.
+Domain: club events. Mentees receive a requirements brief, learn the design building blocks on a separate course-registration example (tables, primary and foreign keys, one-to-many, many-to-many through a relationship table, constraints), sketch tables on paper in groups, then compare with the reference schema. A 5-minute opener shows the "old sheet" (one flat table) and its visible inconsistencies to motivate the exercise.
 
 Design brief given to mentees:
 
@@ -37,10 +37,11 @@ signups_sheet (all TEXT, no keys)  -- the old flat sheet, for contrast
 | Time | Segment |
 |---|---|
 | 0–5 | Old sheet on the projector: `SELECT DISTINCT club_name` returns 10 spellings of 8 clubs; one student has two emails |
-| 5–17 | Groups design tables from the brief (10 min), two groups share |
-| 17–25 | Reveal reference schema; keys, one-to-many, many-to-many; "try to break it" constraint demo; mentees open the page |
-| 25–48 | Queries in three levels (one table → JOIN → GROUP BY); instructor live-codes the first of each level |
-| 48–57 | MongoDB segment (slides): per-event sign-up forms with different questions |
+| 5–13 | The brief, then the design building blocks on a course-registration example (slides only) |
+| 13–24 | Groups design tables from the brief with a five-step checklist (8 min), two groups share |
+| 24–29 | Reveal reference schema; "try to break it" constraint demo; mentees open the page |
+| 29–48 | Queries in three levels (one table → JOIN → GROUP BY); instructor live-codes the first of each level |
+| 48–57 | Beyond tables (slides): per-event sign-up forms in MongoDB, then Elasticsearch/OpenSearch, DynamoDB, Splunk, Neo4j |
 | 57–60 | Wrap-up |
 
 ## Data
@@ -87,9 +88,9 @@ Answer checking compares the mentee's last result with the reference query run o
 
 "Try to break it" statements live in `sql/break_it.sql` with the expected SQLSTATE for each: foreign key (23503), primary key (23505), check (23514), and the same bad rows succeeding against `signups_sheet`.
 
-## MongoDB segment (slides only)
+## Beyond tables (slides only)
 
-Each event's sign-up form asks different questions (Hack Night: shirt size, dietary list, GitHub, team; Resume Review: major, resume link, target roles; Poker Night: nothing). SQL attempts: one column per question (mostly NULL, `ALTER TABLE` per form) or a question/answer table (all text, pivots). MongoDB: a `registrations` collection whose documents carry their own answers, with one `find` and one `$group` aggregation. Trade-off slide: documents fit varying shapes read as a whole; SQL fits relationships, joins, and constraints ("Would you store RSVPs in MongoDB?"); Postgres JSONB can do documents too.
+Each event's sign-up form asks different questions (Hack Night: shirt size, dietary list, GitHub, team; Resume Review: major, resume link, target roles; Poker Night: nothing). SQL attempts: one column per question (mostly NULL, `ALTER TABLE` per form) or a question/answer table (all text, pivots). MongoDB: a `registrations` collection whose documents carry their own answers, with one `find` and one `$group` aggregation. Trade-off slide: documents fit varying shapes read as a whole; SQL fits relationships, joins, and constraints ("Would you store RSVPs in MongoDB?"); Postgres JSONB can do documents too. A final slide names four other databases and what each is for: Elasticsearch/OpenSearch (search), DynamoDB (key-value at scale, from Amazon's Dynamo design), Splunk (logs), Neo4j (graph).
 
 ## Deliverables (repository root)
 
@@ -97,7 +98,7 @@ Each event's sign-up form asks different questions (Hack Night: shirt size, diet
 - `sql/schema.sql`, `sql/seed.sql`, `sql/exercises.sql`, `sql/break_it.sql`.
 - `scripts/generate_seed.py`.
 - `tests/` — Node `node:test` suite using PGlite 0.5.16 from npm (pinned in `package.json`).
-- `slides/databases-workshop.pptx` (~14 slides) plus its build script.
+- `slides/databases-workshop.pptx` (21 slides) plus its build script.
 - `INSTRUCTOR.md` (run sheet, talking points, steering for common student designs, demo queries, fallback plan) and a short `README.md` (how to serve the page, load into local Postgres 16, regenerate data, run tests).
 
 ## Page behavior
