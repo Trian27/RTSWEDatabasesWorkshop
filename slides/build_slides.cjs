@@ -769,9 +769,6 @@ function slideYourTurn(pres, section) {
     text(slide, body, { x: rightX + 0.6, y: y + 0.03, w: rightW - 0.6, h, fontSize: SIZE.body, color: HEX.lt1 });
     y += h;
   });
-  const pillY = 5.95;
-  slide.addShape('roundRect', { x: rightX, y: pillY, w: rightW, h: 0.75, fill: { color: HEX.dk2 }, line: { color: HEX.accent3, width: 3 }, rectRadius: 0.12 });
-  text(slide, '8:00  ·  groups of 2–3  ·  on paper', { x: rightX, y: pillY, w: rightW, h: 0.75, align: 'center', valign: 'middle', fontSize: SIZE.heading, bold: true, color: HEX.lt1 });
   slide.addNotes('Groups of 2-3 sketch tables on paper for 8 minutes, following the five steps.\n'
     + 'Walk around with the prompts from the run sheet. Pick two groups with different designs to share for one minute each.');
 }
@@ -1098,7 +1095,7 @@ function slideTradeoffs(pres, section) {
 }
 
 function slideOtherDatabases(pres, section) {
-  const slide = addSlide(pres, section, 'CONTENT', 'Other databases you will hear about');
+  const slide = addSlide(pres, section, 'CONTENT', 'Other databases you might hear about / work with');
   const w = (CONTENT_W - GAP) / 2;
   const h = 2.45;
   OTHER_DATABASES.forEach((db, i) => {

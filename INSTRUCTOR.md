@@ -143,7 +143,7 @@ Transition: "Now use these on the club."
 
 Goal: mentees apply the tools to the club, so your reveal answers a question they already have.
 
-1. **Slide 9.** The brief is on the left, and a five-step checklist on the right: list the things (one table each), list each table's columns, pick each primary key, connect related tables (a foreign key on the many side, or a relationship table), and add rules. Groups of 2–3, on paper, with an 8-minute timer.
+1. **Slide 9.** The brief is on the left, and a five-step checklist on the right: list the things (one table each), list each table's columns, pick each primary key, connect related tables (a foreign key on the many side, or a relationship table), and add rules. Groups of 2–3, on paper, for 8 minutes (the slide no longer shows a timer, so say it).
 2. **Walk around.** Use these prompts when you see a common design:
 
    | What you see | Ask | Where it leads |
@@ -243,7 +243,7 @@ Goal: one honest case where tables are awkward, why RSVPs still belong in tables
    - **One row per answer:** every answer becomes text, and reading one registration back means reassembling rows.
 2. **Slide 18.** In MongoDB, a `registrations` collection holds one document per registration, each carrying whatever answers its own form asked. A new question needs no schema change, and a list is just a list.
 3. **Slide 19.** When each one fits. Documents fit records that each have their own shape and are read whole. Tables fit connected data that you join, count, and protect with rules. Ask: "Would you move RSVPs into MongoDB? How would you find the overbooked events?" Steer toward: you'd lose the foreign keys, and the JOIN plus GROUP BY that answered exercise 10. Mention that Postgres can also store documents, in a `JSONB` column.
-4. **Slide 20 · Other databases you will hear about** (about 2 minutes, one line each):
+4. **Slide 20 · Other databases you might hear about / work with** (about 2 minutes, one line each):
    - **Elasticsearch / OpenSearch:** a search engine over JSON documents, behind search boxes and log search. OpenSearch is the open-source fork of Elasticsearch.
    - **DynamoDB:** Amazon's key-value database for huge amounts of data and fast lookups by key. It grew out of Amazon's Dynamo design, which spreads data around a consistent-hashing ring, the same idea as the Chord lookup protocol. Links to both papers are in the speaker notes.
    - **Splunk:** collects and searches logs and other machine data by time ("why did the site crash at 2 a.m.?").
