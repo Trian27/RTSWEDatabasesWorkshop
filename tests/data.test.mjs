@@ -50,6 +50,25 @@ test('featured student sk101 has 7 RSVPs including the only Intro to Git', async
     WHERE r.netid = 'sk101' AND e.title = 'Intro to Git' AND r.attended`), 1);
 });
 
+test('event 26 is Intro to Git (break_it.sql refers to it by id)', async () => {
+  const { rows } = await db.query('SELECT title FROM events WHERE event_id = 26');
+  assert.deepEqual(rows, [{ title: 'Intro to Git' }]);
+});
+
+test('exercise 12 prompt holds: 119 of 120 events have at least one RSVP', async () => {
+  assert.equal(await scalar(db, 'SELECT COUNT(DISTINCT event_id) FROM rsvps'), 119);
+});
+
+test('turnout differs by club so exercise 11 has a clear best and worst', async () => {
+  const { rows } = await db.query(`
+    SELECT c.name, AVG(r.attended::int)::float AS turnout
+    FROM clubs c JOIN events e ON e.club_id = c.club_id JOIN rsvps r ON r.event_id = e.event_id
+    GROUP BY c.name ORDER BY turnout DESC`);
+  assert.equal(rows[0].name, 'Robotics Club');
+  assert.equal(rows.at(-1).name, 'Photography Club');
+  assert.ok(rows[0].turnout - rows[1].turnout >= 0.02, 'best club should lead clearly');
+});
+
 test('overall attendance is realistic (60-80%)', async () => {
   const rate = await scalar(db, 'SELECT AVG(attended::int) FROM rsvps');
   assert.ok(rate >= 0.6 && rate <= 0.8, `attendance = ${rate}`);
